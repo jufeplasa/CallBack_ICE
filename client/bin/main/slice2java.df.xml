@@ -1,0 +1,12 @@
+<state>
+  <timestamp value='1726262874903' />
+  <sourceSet name='default'>
+    <source name='C:\Users\jufep\OneDrive\Escritorio\11vo semestre\ingesoft4\semana3\helloworld-ciclo-kbd-JUANPLAZA-SANTIAGOCASTILLO\Printer.ice'>
+      <file name='C:\Users\jufep\OneDrive\Escritorio\11vo semestre\ingesoft4\semana3\helloworld-ciclo-kbd-JUANPLAZA-SANTIAGOCASTILLO\client\build\generated-src\Demo\Printer.java' />
+      <file name='C:\Users\jufep\OneDrive\Escritorio\11vo semestre\ingesoft4\semana3\helloworld-ciclo-kbd-JUANPLAZA-SANTIAGOCASTILLO\client\build\generated-src\Demo\PrinterPrx.java' />
+      <file name='C:\Users\jufep\OneDrive\Escritorio\11vo semestre\ingesoft4\semana3\helloworld-ciclo-kbd-JUANPLAZA-SANTIAGOCASTILLO\client\build\generated-src\Demo\_PrinterPrxI.java' />
+    </source>
+    <arg value='C:\Program Files\ZeroC\Ice-3.7.10\\bin\slice2java.exe' />
+    <arg value='-IC:\Program Files\ZeroC\Ice-3.7.10\\slice' />
+  </sourceSet>
+</state>

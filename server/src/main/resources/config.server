@@ -1,0 +1,9 @@
+# The server creates one single object adapter with the name
+# "Printer". The following line sets the endpoints for this
+# adapter.
+#
+Printer.Endpoints=tcp -p 10800
+#
+# Listen on all available interfaces
+#
+Ice.Default.Host=hgrid2
