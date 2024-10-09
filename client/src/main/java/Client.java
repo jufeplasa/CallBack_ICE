@@ -1,5 +1,8 @@
 import java.net.UnknownHostException;
 import java.util.Scanner;
+import com.zeroc.Ice.Util;
+
+import com.zeroc.Ice.ObjectAdapter;
 public class Client
 {
     private static Scanner lector;
@@ -8,9 +11,22 @@ public class Client
         lector=new Scanner(System.in);
         java.util.List<String> extraArgs = new java.util.ArrayList<>();
 
-        try(com.zeroc.Ice.Communicator communicator = com.zeroc.Ice.Util.initialize(args,"config.client",extraArgs))
-        {
-            //com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:default -p 10000");
+        try(com.zeroc.Ice.Communicator communicator = com.zeroc.Ice.Util.initialize(args,"config.client",extraArgs)){
+
+
+
+
+            ObjectAdapter adapter = communicator.createObjectAdapter("PrinterAdapter");
+            PrinterI mensajero = new PrinterI();
+            adapter.add(mensajero, Util.stringToIdentity("printer"));
+            adapter.activate();
+
+            Thread receiverThread = new Thread(() -> {
+                communicator.waitForShutdown();
+            });
+            receiverThread.start();
+
+
             Demo.PrinterPrx printer = Demo.PrinterPrx.checkedCast(communicator.propertyToProxy("Printer.Proxy")).ice_twoway().ice_secure(false);
 
             //Demo.PrinterPrx printer = Demo.PrinterPrx.checkedCast(base);

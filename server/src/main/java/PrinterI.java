@@ -62,6 +62,10 @@ public class PrinterI implements Demo.Printer {
         }
     }
 
+    public void sendMessage(String who){
+        
+    }
+
     public String fibonacci(int n){
         StringBuilder serieF = new StringBuilder("[");
         int a1=1;
