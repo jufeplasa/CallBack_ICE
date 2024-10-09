@@ -2,7 +2,9 @@ import com.zeroc.Ice.SocketException;
 import java.net.NetworkInterface;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.List;
 
 public class PrinterI implements Demo.Printer {
 
@@ -11,6 +13,7 @@ public class PrinterI implements Demo.Printer {
     private int numRequest;
     private double throuhgput;
     private double averageTimeResponse;
+    private List<ClientDTO> clients =new ArrayList<ClientDTO>();
 
     public String printString(String s, com.zeroc.Ice.Current current)
     {   
