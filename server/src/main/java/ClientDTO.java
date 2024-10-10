@@ -20,4 +20,7 @@ public class ClientDTO {
     public void setUsername(String username) {
         this.username = username;
     }
+    public void setClientPrx(Demo.PrinterPrx clientPrx) {
+        this.clientPrx = clientPrx;
+    }
 }

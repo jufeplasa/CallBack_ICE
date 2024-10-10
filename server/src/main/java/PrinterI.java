@@ -26,6 +26,39 @@ public class PrinterI implements Demo.Printer {
         System.out.println(showPerformMeasures());
         return rMessage;
     }
+  
+    public void addClient(String infoClient, com.zeroc.Ice.Current current){
+        
+        String[] command = infoClient.split(":");
+        if(findClientDTO(command[1])==null){
+            ClientDTO newClient = new ClientDTO();
+            Demo.PrinterPrx proxy = Demo.PrinterPrx.checkedCast(current.con.createProxy(current.id));
+            newClient.setHostname(command[0]);
+            newClient.setUsername(command[1]);
+            newClient.setClientPrx(proxy);
+            clients.add(newClient);
+        }
+    }
+
+    private ClientDTO findClientDTO(String username){
+        for (ClientDTO client : clients) {
+            if(client.getUsername().equals(username)){
+                return client;
+            }
+        }
+        return null;
+    }
+
+    public void deleteClient(String username){
+        ClientDTO client=findClientDTO(username);
+        if(client!=null){
+            clients.remove(client);
+        }
+    }
+
+    public void sendMessage(String who){
+        
+    }
 
     public String procesingString(String s){
 
@@ -63,11 +96,7 @@ public class PrinterI implements Demo.Printer {
                 return "El valor no es un numero entero ni 'tlist' o 'portlist': " + command[2];
             }
         }
-    }
-
-    public void sendMessage(String who){
-        
-    }
+    } 
 
     public String fibonacci(int n){
         StringBuilder serieF = new StringBuilder("[");
