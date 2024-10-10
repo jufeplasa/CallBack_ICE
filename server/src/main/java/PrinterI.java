@@ -15,6 +15,13 @@ public class PrinterI implements Demo.Printer {
     private double averageTimeResponse;
     private List<ClientDTO> clients =new ArrayList<ClientDTO>();
 
+    /* 
+     * Imprimir cadena
+     * El metodo hace inicios de variables para el calcula de una medidas de desempeño.
+     * Luego llama al metodo de procesar cadena. Cuando el metodo devuelve una respuesta se hace
+     * un calculo parical de las medidas del desempeño. Imprime las metricas actulizadas y
+     * devuelve la respuesta al cliente respectivo.
+     */
     public String printString(String s, com.zeroc.Ice.Current current)
     {   
         long startTime = System.nanoTime();
@@ -26,7 +33,14 @@ public class PrinterI implements Demo.Printer {
         System.out.println(showPerformMeasures());
         return rMessage;
     }
-  
+    /* 
+     * Agregar Cliente
+     * El metodo se encarga primero de verificar si el cliente existe,
+     * luego crea un cliente y lo agrega en la lista "clients"
+     * Hostname
+     * Username
+     * Proxy
+     */
     public void addClient(String infoClient, com.zeroc.Ice.Current current){
         
         String[] command = infoClient.split(":");
@@ -40,6 +54,11 @@ public class PrinterI implements Demo.Printer {
         }
     }
 
+    /* 
+     * Encontrar cliente
+     * El metodo se encarga de buscar un cliente por medio de su username,
+     * si lo encuentra devuelve el objeto sino devuelve "null"
+     */
     private ClientDTO findClientDTO(String username){
         for (ClientDTO client : clients) {
             if(client.getUsername().equals(username)){
@@ -49,6 +68,12 @@ public class PrinterI implements Demo.Printer {
         return null;
     }
 
+    /* 
+     * Eliminar cliente
+     * El metodo se encarga de buscar un cliente por medio de su username,
+     * si lo encuentra elimina el objeto de la lista "clients". En caso de
+     * que el cliente no exista, no hace algo.
+     */
     public void deleteClient(String username){
         ClientDTO client=findClientDTO(username);
         if(client!=null){
@@ -56,10 +81,29 @@ public class PrinterI implements Demo.Printer {
         }
     }
 
+    /* 
+     * Enviar mensaje
+     * El metodo se encarga de enviar un mensaje. Primero verifica para quien va el mensaje,
+     * si es para alguien en especifico entonces debe buscar al otro cliente por su usuario, obtiene su
+     * objeto proxy y se le envía un mensaje.
+     * 
+     * Si es en broadcast entonces se debe hacer un llamado a un metodo que envíe el mensaje a todos los
+     * clientes que se encuentre en la lista "clients"
+     */
     public void sendMessage(String who){
         
     }
 
+    /* 
+     * Procesar cadena
+     * Descompone la cadena "s", donde obtenemos [hostname, username, comando]
+     * Luego se verifica si el comando es un entero para realizar la sucesion de fibonnacci.
+     * En caso contrario verifica si corresponde a otro caso como lista de interfaces,
+     * lista de puertos, ! para un comando de consola.
+     * 
+     * En caso tampoco llamar alguna funcion de las que se menciona es porque el cliente
+     * ha salido o cometio un error al ingresar la informacion.
+     */
     public String procesingString(String s){
 
         String[] command = s.split(":");
