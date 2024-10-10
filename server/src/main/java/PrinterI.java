@@ -1,4 +1,7 @@
 import com.zeroc.Ice.SocketException;
+
+import Demo.PrinterPrx;
+
 import java.net.NetworkInterface;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -26,13 +29,13 @@ public class PrinterI implements Demo.Printer {
     {   
         long startTime = System.nanoTime();
         numRequest++;
-        System.out.println(s);
         String rMessage=procesingString(s);
         long endTime = System.nanoTime();
         calculatePerformMeasures(startTime,endTime);
         System.out.println(showPerformMeasures());
         return rMessage;
     }
+
     /* 
      * Agregar Cliente
      * El metodo se encarga primero de verificar si el cliente existe,
@@ -83,17 +86,52 @@ public class PrinterI implements Demo.Printer {
 
     /* 
      * Enviar mensaje
-     * El metodo se encarga de enviar un mensaje. Primero verifica para quien va el mensaje,
-     * si es para alguien en especifico entonces debe buscar al otro cliente por su usuario, obtiene su
-     * objeto proxy y se le envía un mensaje.
-     * 
-     * Si es en broadcast entonces se debe hacer un llamado a un metodo que envíe el mensaje a todos los
-     * clientes que se encuentre en la lista "clients"
+     * El metodo se encarga de enviar un mensaje. Primero mira si el mensaje va para todos los clientes conectados
+     * si es asi, entonces llama a un metodo que se encarge de mandar los mensajes a todos.
+     * En caso contrario llama a un metodo que mande el mensaje a un cliente en especifico.
      */
-    public void sendMessage(String who){
-        
+    public void sendMessage(String who, String message){
+        if(who.equalsIgnoreCase("All")||who.equalsIgnoreCase("BC")){
+            sendToAll(message);
+        }
+        sendMessageClient(who, message);
+    }
+    /*
+     * Mandar un mensaje a un cliente
+     * El metodo consiste en buscar el objeto clienteDTO por medio del username, y verificar que exista,
+     * una vez validado se obtinene el objeto prx del cliente y envía el mensaje al cliente receptor.
+     */
+    private void sendMessageClient(String who, String message){
+        ClientDTO receiver=findClientDTO(who);
+        if(receiver!=null){
+            Demo.PrinterPrx sender = receiver.getClientPrx();
+            sender.printString(message);
+        }
+    }
+    /*
+     * Envir a todos
+     * Se encarga de recorrer la lista y a cada uno enviarle el mensaje
+     * por su respectivo prx
+     */
+    private void sendToAll(String message){
+        for (ClientDTO client : clients) {
+            client.getClientPrx().printString(message);
+        }
     }
 
+    /*
+     * Mostrar clientes
+     * Este metodo recorre la lista "clients" y devuelve un listado de
+     * los username de los clientes conectados.
+     */
+    public String showAllClients(){
+        String message="";
+        for (ClientDTO client : clients) {
+            message+="- "+client.getUsername()+"\n";
+        }
+        return message;
+    }
+    
     /* 
      * Procesar cadena
      * Descompone la cadena "s", donde obtenemos [hostname, username, comando]
