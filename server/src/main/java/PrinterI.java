@@ -27,6 +27,8 @@ public class PrinterI implements Demo.Printer {
      */
     public String printString(String s, com.zeroc.Ice.Current current)
     {   
+        addClient(s,current);
+        System.out.println("cliente agregado");
         long startTime = System.nanoTime();
         numRequest++;
         String rMessage=procesingString(s);
@@ -47,27 +49,34 @@ public class PrinterI implements Demo.Printer {
     public void addClient(String infoClient, com.zeroc.Ice.Current current){
         
         String[] command = infoClient.split(":");
-        if(findClientDTO(command[1])==null){
+        if(findClientDTO(command[0])==null){
+            System.out.println("entro y crea");
             ClientDTO newClient = new ClientDTO();
+            System.out.println("Crear proxy");
             Demo.PrinterPrx proxy = Demo.PrinterPrx.checkedCast(current.con.createProxy(current.id));
+            System.out.println("Creo proxy");
             newClient.setHostname(command[0]);
             newClient.setUsername(command[1]);
             newClient.setClientPrx(proxy);
             clients.add(newClient);
         }
+        System.out.println("vuelve");
     }
 
     /* 
      * Encontrar cliente
-     * El metodo se encarga de buscar un cliente por medio de su username,
+     * El metodo se encarga de buscar un cliente por medio de su hostname,
      * si lo encuentra devuelve el objeto sino devuelve "null"
      */
-    private ClientDTO findClientDTO(String username){
+    private ClientDTO findClientDTO(String hostname){
+        System.out.println("entro y busca");
         for (ClientDTO client : clients) {
-            if(client.getUsername().equals(username)){
+            
+            if(client.getHostname().equals(hostname)){
                 return client;
             }
         }
+        System.out.println("sale y no encontro");
         return null;
     }
 
@@ -77,8 +86,8 @@ public class PrinterI implements Demo.Printer {
      * si lo encuentra elimina el objeto de la lista "clients". En caso de
      * que el cliente no exista, no hace algo.
      */
-    public void deleteClient(String username){
-        ClientDTO client=findClientDTO(username);
+    public void deleteClient(String hostname){
+        ClientDTO client=findClientDTO(hostname);
         if(client!=null){
             clients.remove(client);
         }
@@ -171,11 +180,23 @@ public class PrinterI implements Demo.Printer {
                 System.out.println(result);
                 return result;
             }
+            else if (command[2].equalsIgnoreCase("listC")) {
+                return showAllClients();
+            }
+            else if (command[2].startsWith("to")|| command[2].startsWith("BC")) {
+                String[] complement = command[2].split(":");
+                String receiver=complement[0].split(" ")[1];
+                String message=complement[1];
+                sendMessage(receiver, message);
+                return "";
+            }
             else if (command[2].equalsIgnoreCase("exit")) {
+                deleteClient(command[0]);
                 return "Hasta luego :D";
             }
+
             else {
-                return "El valor no es un numero entero ni 'tlist' o 'portlist': " + command[2];
+                return "El valor no es pertenece a ningun comando: " + command[2];
             }
         }
     } 

@@ -6,4 +6,4 @@ Printer.Endpoints=tcp -p 10800
 #
 # Listen on all available interfaces
 #
-Ice.Default.Host=hgrid2
+Ice.Default.Host=localhost
