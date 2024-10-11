@@ -1,7 +1,7 @@
 public class ClientDTO {
     private String username;
     private String hostname;
-    private Demo.PrinterPrx clientPrx;
+    private Demo.CallbackPrx callback;
 
     public ClientDTO(){}
 
@@ -11,8 +11,8 @@ public class ClientDTO {
     public String getUsername() {
         return username;
     }
-    public Demo.PrinterPrx getClientPrx() {
-        return clientPrx;
+    public Demo.CallbackPrx getCallbackPrx() {
+        return callback;
     }
     public void setHostname(String hostname) {
         this.hostname = hostname;
@@ -20,7 +20,7 @@ public class ClientDTO {
     public void setUsername(String username) {
         this.username = username;
     }
-    public void setClientPrx(Demo.PrinterPrx clientPrx) {
-        this.clientPrx = clientPrx;
+    public void setClientCallback(Demo.CallbackPrx callback) {
+        this.callback = callback;
     }
 }

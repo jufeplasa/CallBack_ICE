@@ -1,6 +1,7 @@
 import com.zeroc.Ice.SocketException;
 
 import Demo.PrinterPrx;
+import Demo.CallbackPrx;
 
 import java.net.NetworkInterface;
 import java.io.BufferedReader;
@@ -8,15 +9,32 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 
 public class PrinterI implements Demo.Printer {
 
-    
+    ExecutorService executor = Executors.newFixedThreadPool(5);
     private long initialTime = System.nanoTime();
     private int numRequest;
     private double throuhgput;
     private double averageTimeResponse;
     private List<ClientDTO> clients =new ArrayList<ClientDTO>();
+    Semaphore semaphore = new Semaphore(1);
+
+    public PrinterI() {
+        Thread thread = new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(5000);
+                    checkConnections();
+                } catch (Exception e) {
+                }
+            }
+        });
+        thread.start();
+    }
 
     /* 
      * Imprimir cadena
@@ -25,17 +43,18 @@ public class PrinterI implements Demo.Printer {
      * un calculo parical de las medidas del desempeño. Imprime las metricas actulizadas y
      * devuelve la respuesta al cliente respectivo.
      */
-    public String printString(String s, com.zeroc.Ice.Current current)
+    public void printString(String s, Demo.CallbackPrx callback, com.zeroc.Ice.Current current)
     {   
-        addClient(s,current);
+        addClient(s, callback, current);
         System.out.println("cliente agregado");
-        long startTime = System.nanoTime();
-        numRequest++;
-        String rMessage=procesingString(s);
-        long endTime = System.nanoTime();
-        calculatePerformMeasures(startTime,endTime);
-        System.out.println(showPerformMeasures());
-        return rMessage;
+        executor.submit(() -> {
+            long startTime = System.nanoTime();
+            numRequest++;
+            procesingString(s, callback);
+            long endTime = System.nanoTime();
+            calculatePerformMeasures(startTime,endTime);
+            System.out.println(showPerformMeasures());
+        });
     }
 
     /* 
@@ -46,21 +65,22 @@ public class PrinterI implements Demo.Printer {
      * Username
      * Proxy
      */
-    public void addClient(String infoClient, com.zeroc.Ice.Current current){
-        
-        String[] command = infoClient.split(":");
-        if(findClientDTO(command[0])==null){
-            System.out.println("entro y crea");
-            ClientDTO newClient = new ClientDTO();
-            System.out.println("Crear proxy");
-            Demo.PrinterPrx proxy = Demo.PrinterPrx.checkedCast(current.con.createProxy(current.id));
-            System.out.println("Creo proxy");
-            newClient.setHostname(command[0]);
-            newClient.setUsername(command[1]);
-            newClient.setClientPrx(proxy);
-            clients.add(newClient);
+    public void addClient(String infoClient, Demo.CallbackPrx callback, com.zeroc.Ice.Current current){
+        try {
+            semaphore.acquire();
+            String[] command = infoClient.split(":");
+            if(findClientDTO(command[1])==null){
+                ClientDTO newClient = new ClientDTO();
+                newClient.setHostname(command[0]);
+                newClient.setUsername(command[1]);
+                newClient.setClientCallback(callback);
+                clients.add(newClient);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            semaphore.release();
         }
-        System.out.println("vuelve");
     }
 
     /* 
@@ -68,11 +88,11 @@ public class PrinterI implements Demo.Printer {
      * El metodo se encarga de buscar un cliente por medio de su hostname,
      * si lo encuentra devuelve el objeto sino devuelve "null"
      */
-    private ClientDTO findClientDTO(String hostname){
+    private ClientDTO findClientDTO(String username){
         System.out.println("entro y busca");
         for (ClientDTO client : clients) {
             
-            if(client.getHostname().equals(hostname)){
+            if(client.getUsername().equals(username)){
                 return client;
             }
         }
@@ -86,10 +106,35 @@ public class PrinterI implements Demo.Printer {
      * si lo encuentra elimina el objeto de la lista "clients". En caso de
      * que el cliente no exista, no hace algo.
      */
-    public void deleteClient(String hostname){
-        ClientDTO client=findClientDTO(hostname);
-        if(client!=null){
-            clients.remove(client);
+    public void deleteClient(String username){
+        try {
+            semaphore.acquire();
+            ClientDTO client=findClientDTO(username);
+            if(client!=null){
+                clients.remove(client);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            semaphore.release();
+        }
+    }
+
+    /* 
+     * Verificar conexiones
+     * El metodo se encarga de verificar las conexiones de los clientes.
+     * Si un cliente se desconecta, se elimina de la lista "users".
+     */
+    public void checkConnections() {
+        for (ClientDTO user : clients) {
+            String username = user.getUsername();
+            try {
+                Demo.CallbackPrx callback = user.getCallbackPrx();
+                callback.ice_ping();
+            } catch (Exception e) {
+                deleteClient(username);
+                System.out.println("Usuario " + username + " desconectado");
+            }
         }
     }
 
@@ -99,9 +144,10 @@ public class PrinterI implements Demo.Printer {
      * si es asi, entonces llama a un metodo que se encarge de mandar los mensajes a todos.
      * En caso contrario llama a un metodo que mande el mensaje a un cliente en especifico.
      */
-    public void sendMessage(String who, String message){
+    public void sendMessage(String who, String from, String message){
+        message = "Mensaje de " + from + ": " + message;
         if(who.equalsIgnoreCase("All")||who.equalsIgnoreCase("BC")){
-            sendToAll(message);
+            sendToAll(message, from);
         }
         sendMessageClient(who, message);
     }
@@ -113,8 +159,8 @@ public class PrinterI implements Demo.Printer {
     private void sendMessageClient(String who, String message){
         ClientDTO receiver=findClientDTO(who);
         if(receiver!=null){
-            Demo.PrinterPrx sender = receiver.getClientPrx();
-            sender.printString(message);
+            Demo.CallbackPrx sender = receiver.getCallbackPrx();
+            sender.reportResponse(message);
         }
     }
     /*
@@ -122,9 +168,12 @@ public class PrinterI implements Demo.Printer {
      * Se encarga de recorrer la lista y a cada uno enviarle el mensaje
      * por su respectivo prx
      */
-    private void sendToAll(String message){
+    private void sendToAll(String message, String from){
         for (ClientDTO client : clients) {
-            client.getClientPrx().printString(message);
+            if(client.getUsername().equals(from)){
+                continue;
+            }  
+            client.getCallbackPrx().reportResponse(message);
         }
     }
 
@@ -134,7 +183,7 @@ public class PrinterI implements Demo.Printer {
      * los username de los clientes conectados.
      */
     public String showAllClients(){
-        String message="";
+        String message="Lista de clientes:\n";
         for (ClientDTO client : clients) {
             message+="- "+client.getUsername()+"\n";
         }
@@ -151,67 +200,79 @@ public class PrinterI implements Demo.Printer {
      * En caso tampoco llamar alguna funcion de las que se menciona es porque el cliente
      * ha salido o cometio un error al ingresar la informacion.
      */
-    public String procesingString(String s){
+    public void procesingString(String s, Demo.CallbackPrx callback){
 
-        String[] command = s.split(":");
+        String[] command = s.split(":", 3);
+        if(command[2].equals("zhk")) {
+            // go back before it is too late
+            return;
+        } else if(command[2].equals("exit")) {
+            deleteClient(command[1]);
+            callback.reportResponse("Hasta luego :D");
+            return;
+        }
         try {
-            int number = Integer.parseInt(command[2]);
+            long number = Long.parseLong(command[2]);
             String serieF=fibonacci(number);
             String factores=findfactores(number);
             String message=command[0]+"/"+command[1]+": "+serieF+"\nFactores primos: "+factores;
-            return message;
+            
+            callback.reportResponse(message);
         } 
         catch (NumberFormatException e) {
-            if (command[2].equalsIgnoreCase("listifs")) {
+            if (command[2].trim().equalsIgnoreCase("listifs")) {
                 String result = listNetworkInterfaces();
                 System.out.println(command[0]+"/"+command[1]+":"+result);
-                return result;
+                callback.reportResponse(result);
             } 
             else if (command[2].startsWith("listports")) {
                 String ip = command[2].split(" ")[1]; // Extrae la IP de la entrada del mensaje
                 String result = scannerIp(ip);
                 System.out.println(command[0]+"/"+command[1]+":"+result);
-                return result;
+                callback.reportResponse(result);
             }
             else if (command[2].startsWith("!")) {
                 String commando = command[2].substring(1); // Extrae el comando quitando el "!"
                 String commandResult = executeCommand(commando);
                 String result = command[0]+"/"+command[1] + ": " + commandResult;
                 System.out.println(result);
-                return result;
+                callback.reportResponse(result);
             }
             else if (command[2].equalsIgnoreCase("listC")) {
-                return showAllClients();
+                callback.reportResponse(showAllClients());
             }
-            else if (command[2].startsWith("to")|| command[2].startsWith("BC")) {
+            else if (command[2].startsWith("to")) {
                 String[] complement = command[2].split(":");
                 String receiver=complement[0].split(" ")[1];
                 String message=complement[1];
-                sendMessage(receiver, message);
-                return "";
-            }
-            else if (command[2].equalsIgnoreCase("exit")) {
+                sendMessage(receiver, command[1], message);
+                callback.reportResponse("");
+            } else if(command[2].startsWith("BC")) {
+                String[] complement = command[2].split(":");
+                sendMessage("All", command[1], complement[1]);
+            } else if (command[2].equalsIgnoreCase("exit")) {
                 deleteClient(command[0]);
-                return "Hasta luego :D";
+                callback.reportResponse("Hasta luego :D");
             }
 
             else {
-                return "El valor no es pertenece a ningun comando: " + command[2];
+                callback.reportResponse("El valor no es pertenece a ningun comando: " + command[2]);
             }
         }
     } 
 
-    public String fibonacci(int n){
+    public String fibonacci(long n){
         StringBuilder serieF = new StringBuilder("[");
-        int a1=1;
-        int a2=1;
-        for (int i = 0; i < n; i++) {
+        long a1=1;
+        long a2=1;
+        for (long i = 0; i < n; i++) {
             if (i==0||i==1) {
                 serieF.append("1 ");
             }
             else{
                 serieF.append(", ");
-                int c= a1+a2;
+                long c= a1+a2;
+                System.out.println(c);
                 serieF.append(c);
                 a2=a1;
                 a1=c;
@@ -221,16 +282,16 @@ public class PrinterI implements Demo.Printer {
         return serieF.toString();
     }
 
-    public String findfactores(int n  ){
+    public String findfactores(long n  ){
         String factores="[";
-        for (int i = 2; i <= n; i++) {
+        for (long i = 2; i <= n; i++) {
             while (n % i == 0) {
                 factores+=i+" ";
                 n /= i;
             }
         }
         factores+="]";
-        return factores;
+        return factores.toString();
     }
 
     //Retorna un arreglo con los puertos y servicios
@@ -256,7 +317,7 @@ public class PrinterI implements Demo.Printer {
         return result.toString();
     }
     
-    public String listNetworkInterfaces() throws SocketException {
+    public String listNetworkInterfaces()  {
         StringBuilder sb = new StringBuilder();
         Enumeration<NetworkInterface> interfaces;
         try {

@@ -1,8 +1,11 @@
 module Demo
 {
-    
+    interface Callback{
+        void reportResponse(string response);
+    }
+
     interface Printer
     {
-        string printString(string s);
+        void printString(string s, Callback* callback);
     }
 }

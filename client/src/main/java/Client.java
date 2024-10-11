@@ -3,6 +3,8 @@ import java.util.Scanner;
 import com.zeroc.Ice.Util;
 import com.zeroc.Ice.Communicator;
 import com.zeroc.Ice.ObjectAdapter;
+import com.zeroc.Ice.ObjectPrx;
+
 public class Client
 {
     private static Scanner lector;
@@ -11,7 +13,7 @@ public class Client
         lector=new Scanner(System.in);
         java.util.List<String> extraArgs = new java.util.ArrayList<>();
 
-        try(com.zeroc.Ice.Communicator communicator = com.zeroc.Ice.Util.initialize(args,"config.client",extraArgs)){
+        try(com.zeroc.Ice.Communicator communicator = com.zeroc.Ice.Util.initialize(args,"config.client")){
 
 
             // Communicator receiveCommunicator = Util.initialize(args, "config.client", extraArgs);
@@ -26,7 +28,7 @@ public class Client
             // receiverThread.start();
 
 
-            Demo.PrinterPrx printer = Demo.PrinterPrx.checkedCast(communicator.propertyToProxy("Printer.Proxy")).ice_twoway().ice_secure(false);
+            Demo.PrinterPrx printer = Demo.PrinterPrx.checkedCast(communicator.propertyToProxy("Printer.Proxy"));
 
             //Demo.PrinterPrx printer = Demo.PrinterPrx.checkedCast(base);
 
@@ -37,13 +39,30 @@ public class Client
 
             String username = System.getProperty("user.name");
             String hostname = java.net.InetAddress.getLocalHost().getHostName();
+
+            
+            ObjectAdapter adapter = communicator.createObjectAdapter("Callback");
+            Demo.Callback callback = new CallbackI();
+
+            ObjectPrx prx = adapter.add(callback, Util.stringToIdentity("Callback"));
+            Demo.CallbackPrx callbackPrx = Demo.CallbackPrx.checkedCast(prx);
+
+            adapter.activate();
+            
+            System.out.print("Bienvenido, ingresa tu usuario: ");
+            username=lector.nextLine();
             String prev= hostname+":"+username+":";
             String message="";
+
+            printer.printString(prev+"zhk", callbackPrx);
             while(!message.equalsIgnoreCase("exit")){
                 showMenu();
                 message=lector.nextLine();
-                String returnMsg=printer.printString(prev+message);
-                System.out.println(returnMsg);
+                printer.printString(prev+message, callbackPrx);
+                if(message.equals("exit")) {
+                    printer.printString(prev+"exit", callbackPrx);
+                }
+                // System.out.println(returnMsg);
             }
 
             
@@ -51,7 +70,7 @@ public class Client
     }
 
     private static void showMenu(){
-        System.out.println("Digita un mensaje con los siguientes formatos:");
+        System.out.println("\nDigita un mensaje con los siguientes formatos:");
         System.out.println("1) Numero positivo");
         System.out.println("2) Inicie listifs");
         System.out.println("3) Inicie listports [Direccion IP]");
@@ -62,6 +81,7 @@ public class Client
         //Se envia host/username:BC:(mensaje)
         System.out.println("7) BC: -> Enviar un mensaje a todos los clientes");
         System.out.println("8) Exit");
+        System.out.println("--------");
     }
 
 
